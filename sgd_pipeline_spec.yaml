@@ -1,0 +1,215 @@
+# PIPELINE DEFINITION
+# Name: sgd-kb-qa-pipeline
+# Description: Pipeline to process MD files into a knowledge base and QAs using an LLM.
+# Inputs:
+#    data_pvc: str [Default: 'sgd-data-pvc']
+#    input_dir: str [Default: '/mnt/data/md-files']
+#    model_path: str [Default: '/mnt/models/LFM2.5-1.2B-Instruct-Q8_0.gguf']
+#    models_pvc: str [Default: 'sgd-models-pvc']
+#    storage_type: str [Default: 'both']
+components:
+  comp-ingestion-op:
+    executorLabel: exec-ingestion-op
+    inputDefinitions:
+      parameters:
+        input_dir:
+          parameterType: STRING
+    outputDefinitions:
+      artifacts:
+        output_json:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+  comp-llm-processor-op:
+    executorLabel: exec-llm-processor-op
+    inputDefinitions:
+      artifacts:
+        input_json:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+      parameters:
+        model_path:
+          parameterType: STRING
+    outputDefinitions:
+      artifacts:
+        output_kb:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+        output_qa:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+  comp-storage-op:
+    executorLabel: exec-storage-op
+    inputDefinitions:
+      artifacts:
+        kb_file:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+        qa_file:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+      parameters:
+        storage_type:
+          defaultValue: both
+          isOptional: true
+          parameterType: STRING
+deploymentSpec:
+  executors:
+    exec-ingestion-op:
+      container:
+        args:
+        - --input_dir
+        - '{{$.inputs.parameters[''input_dir'']}}'
+        - --output_file
+        - '{{$.outputs.artifacts[''output_json''].path}}'
+        command:
+        - python
+        - src/main.py
+        image: localhost:5000/sgd-ingestion:latest
+    exec-llm-processor-op:
+      container:
+        args:
+        - --input_file
+        - '{{$.inputs.artifacts[''input_json''].path}}'
+        - --model_path
+        - '{{$.inputs.parameters[''model_path'']}}'
+        - --output_kb
+        - '{{$.outputs.artifacts[''output_kb''].path}}'
+        - --output_qa
+        - '{{$.outputs.artifacts[''output_qa''].path}}'
+        command:
+        - python
+        - src/main.py
+        image: localhost:5000/sgd-llm-processor:latest
+        resources:
+          cpuRequest: 2.0
+          memoryRequest: 4.294967296
+          resourceCpuRequest: '2'
+          resourceMemoryRequest: 4Gi
+    exec-storage-op:
+      container:
+        args:
+        - --kb_file
+        - '{{$.inputs.artifacts[''kb_file''].path}}'
+        - --qa_file
+        - '{{$.inputs.artifacts[''qa_file''].path}}'
+        - --storage_type
+        - '{{$.inputs.parameters[''storage_type'']}}'
+        command:
+        - python
+        - src/main.py
+        env:
+        - name: DATABASE_URL
+          value: postgresql://user:password@postgres-service.kubeflow.svc.cluster.local:5432/sgd_db
+        - name: MINIO_ENDPOINT
+          value: http://minio-service.kubeflow.svc.cluster.local:9000
+        - name: MINIO_ACCESS_KEY
+          value: minioadmin
+        - name: MINIO_SECRET_KEY
+          value: minioadmin
+        image: localhost:5000/sgd-storage:latest
+pipelineInfo:
+  description: Pipeline to process MD files into a knowledge base and QAs using an
+    LLM.
+  name: sgd-kb-qa-pipeline
+root:
+  dag:
+    tasks:
+      ingestion-op:
+        cachingOptions: {}
+        componentRef:
+          name: comp-ingestion-op
+        inputs:
+          parameters:
+            input_dir:
+              componentInputParameter: input_dir
+        taskInfo:
+          name: ingestion-op
+      llm-processor-op:
+        cachingOptions: {}
+        componentRef:
+          name: comp-llm-processor-op
+        dependentTasks:
+        - ingestion-op
+        inputs:
+          artifacts:
+            input_json:
+              taskOutputArtifact:
+                outputArtifactKey: output_json
+                producerTask: ingestion-op
+          parameters:
+            model_path:
+              componentInputParameter: model_path
+        taskInfo:
+          name: llm-processor-op
+      storage-op:
+        cachingOptions: {}
+        componentRef:
+          name: comp-storage-op
+        dependentTasks:
+        - llm-processor-op
+        inputs:
+          artifacts:
+            kb_file:
+              taskOutputArtifact:
+                outputArtifactKey: output_kb
+                producerTask: llm-processor-op
+            qa_file:
+              taskOutputArtifact:
+                outputArtifactKey: output_qa
+                producerTask: llm-processor-op
+          parameters:
+            storage_type:
+              componentInputParameter: storage_type
+        taskInfo:
+          name: storage-op
+  inputDefinitions:
+    parameters:
+      data_pvc:
+        defaultValue: sgd-data-pvc
+        isOptional: true
+        parameterType: STRING
+      input_dir:
+        defaultValue: /mnt/data/md-files
+        isOptional: true
+        parameterType: STRING
+      model_path:
+        defaultValue: /mnt/models/LFM2.5-1.2B-Instruct-Q8_0.gguf
+        isOptional: true
+        parameterType: STRING
+      models_pvc:
+        defaultValue: sgd-models-pvc
+        isOptional: true
+        parameterType: STRING
+      storage_type:
+        defaultValue: both
+        isOptional: true
+        parameterType: STRING
+schemaVersion: 2.1.0
+sdkVersion: kfp-2.11.0
+---
+platforms:
+  kubernetes:
+    deploymentSpec:
+      executors:
+        exec-ingestion-op:
+          imagePullPolicy: Always
+          pvcMount:
+          - componentInputParameter: data_pvc
+            mountPath: /mnt/data
+            pvcNameParameter:
+              componentInputParameter: data_pvc
+        exec-llm-processor-op:
+          imagePullPolicy: Always
+          pvcMount:
+          - componentInputParameter: models_pvc
+            mountPath: /mnt/models
+            pvcNameParameter:
+              componentInputParameter: models_pvc
+        exec-storage-op:
+          imagePullPolicy: Always

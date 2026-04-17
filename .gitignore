@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+.env
+
+# Pipeline Generated Files
+*.tar.gz
+
+# Local Data and Models (since they are large/environment specific)
+
+models/
+
+# OS specific
+.DS_Store
+Thumbs.db
