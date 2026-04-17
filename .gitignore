@@ -5,15 +5,22 @@ __pycache__/
 .venv/
 env/
 venv/
-.env
+ENV/
+*.env
 
-# Pipeline Generated Files
-*.tar.gz
+# Pipeline Generated
+sgd_pipeline_spec.yaml
 
-# Local Data and Models (since they are large/environment specific)
+# Data & Models (Local Mounts)
+models/*
+!models/.gitkeep
 
-models/
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
 
-# OS specific
-.DS_Store
-Thumbs.db
+# Kubernetes
+.kube/
+kubeconfig

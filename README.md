@@ -80,6 +80,32 @@ python3 pipeline/compiler.py
 python3 pipeline/submit_run.py
 ```
 
+## 📊 Data Access & Verification
+
+### 1. View PostgreSQL Data
+The pipeline stores structured technical summaries and Question-Answer pairs in a PostgreSQL database.
+
+*   **View Table Schema/Content:**
+    ```bash
+    # Show Knowledge Base (Summaries)
+    kubectl exec -it -n kubeflow deploy/postgres -- psql -U user -d sgd_db -c "SELECT * FROM knowledge_base;"
+
+    # Show Question-Answer Pairs
+    kubectl exec -it -n kubeflow deploy/postgres -- psql -U user -d sgd_db -c "SELECT * FROM qas LIMIT 20;"
+    ```
+
+### 2. View MinIO / SeaweedFS (Files)
+The same data is backed up as raw files in your object storage. Since you are using SeaweedFS, you can browse the files using the **Filer UI**.
+
+1. **Port Forward the Filer UI:**
+   ```bash
+   kubectl port-forward -n kubeflow deployment/seaweedfs 8888:8888
+   ```
+2. **Visit in Browser:**
+   👉 [http://localhost:8888](http://localhost:8888)
+
+You will see your buckets in the `/buckets/` directory.
+
 ## 📂 Directory Structure
 - `components/`: Source code and Dockerfiles for each pipeline stage.
 - `pipeline/`: Pipeline definition, compiler, and submission scripts.

@@ -113,9 +113,9 @@ def sgd_pipeline(
     )
     save.set_env_variable(
         name='MINIO_ACCESS_KEY',
-        value='minioadmin'
+        value='minio'
     )
     save.set_env_variable(
         name='MINIO_SECRET_KEY',
-        value='minioadmin'
+        value='minio123'
     )

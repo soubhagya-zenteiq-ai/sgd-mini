@@ -109,9 +109,9 @@ deploymentSpec:
         - name: MINIO_ENDPOINT
           value: http://minio-service.kubeflow.svc.cluster.local:9000
         - name: MINIO_ACCESS_KEY
-          value: minioadmin
+          value: minio
         - name: MINIO_SECRET_KEY
-          value: minioadmin
+          value: minio123
         image: localhost:5000/sgd-storage:latest
 pipelineInfo:
   description: Pipeline to process MD files into a knowledge base and QAs using an
