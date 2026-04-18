@@ -118,7 +118,7 @@ def generate_kb_and_qa(input_file: str, model_path: str, output_kb: str, output_
     with open(input_file, "r") as f:
         documents = json.load(f)
 
-    knowledge_base = ""
+    knowledge_base = []
     all_qas = []
 
     total_failures = 0
@@ -156,9 +156,10 @@ Detailed Knowledge Base Entry:
             detailed_summary = "Summary generation failed."
             total_failures += 1
 
-        knowledge_base += f"=== KNOWLEDGE BASE ENTRY: {filename} ===\n"
-        knowledge_base += f"ORIGINAL SOURCE: {filename}\n"
-        knowledge_base += f"DETAILED SUMMARY:\n{detailed_summary}\n\n"
+        knowledge_base.append({
+            "filename": filename,
+            "summary": detailed_summary
+        })
 
         # -------------------------
         # QA Generation with Chunking
@@ -189,7 +190,7 @@ Detailed Knowledge Base Entry:
     # Save Outputs
     # -------------------------
     with open(output_kb, "w") as f:
-        f.write(knowledge_base)
+        json.dump(knowledge_base, f, indent=2)
 
     with open(output_qa, "w") as f:
         json.dump(all_qas, f, indent=2)

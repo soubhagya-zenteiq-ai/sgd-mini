@@ -30,19 +30,20 @@ def save_to_postgres(qa_file, kb_file):
         cur = conn.cursor()
         
         # Create tables if not exist
-        cur.execute("CREATE TABLE IF NOT EXISTS knowledge_base (id SERIAL PRIMARY KEY, content TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);")
-        cur.execute("CREATE TABLE IF NOT EXISTS qas (id SERIAL PRIMARY KEY, question TEXT, answer TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);")
+        cur.execute("CREATE TABLE IF NOT EXISTS knowledge_base (id SERIAL PRIMARY KEY, source_file TEXT, content TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);")
+        cur.execute("CREATE TABLE IF NOT EXISTS qas (id SERIAL PRIMARY KEY, source_file TEXT, question TEXT, answer TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);")
         
         # Insert KB
         with open(kb_file, 'r') as f:
-            kb_content = f.read()
-            cur.execute("INSERT INTO knowledge_base (content) VALUES (%s)", (kb_content,))
+            kb_data = json.load(f)
+            for entry in kb_data:
+                cur.execute("INSERT INTO knowledge_base (source_file, content) VALUES (%s, %s)", (entry['filename'], entry['summary']))
         
         # Insert QAs
         with open(qa_file, 'r') as f:
             qas = json.load(f)
             for qa in qas:
-                cur.execute("INSERT INTO qas (question, answer) VALUES (%s, %s)", (qa['question'], qa['answer']))
+                cur.execute("INSERT INTO qas (source_file, question, answer) VALUES (%s, %s, %s)", (qa['source'], qa['question'], qa['answer']))
         
         conn.commit()
         cur.close()
@@ -59,7 +60,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     if args.storage_type in ['minio', 'both']:
-        save_to_minio(args.kb_file, 'rag-kb', 'knowledge_base.txt')
+        save_to_minio(args.kb_file, 'rag-kb', 'knowledge_base.json')
         save_to_minio(args.qa_file, 'rag-qa', 'qas.json')
         
     if args.storage_type in ['postgres', 'both']:
