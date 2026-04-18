@@ -1,4 +1,4 @@
-# SGD-Mini RAG Pipeline
+# SGD-Mini Pipeline
 
 This is an end-to-end Kubeflow pipeline for processing markdown files into a detailed knowledge base and structured QAs using a local GGUF model.
 
